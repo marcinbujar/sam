@@ -59,13 +59,26 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#ifdef _WIN32
+typedef int _Bool;
+#define bool _Bool
+#define true 1
+#define false 0
+#else
 #include <stdbool.h>
+#endif
 #include <math.h>
 #include <stdint.h>
 #if defined(__linux__)
 #include <asm/byteorder.h>
 #define OSSwapBigToHostInt16 __be16_to_cpu
 #define OSSwapBigToHostInt32 __be32_to_cpu
+#elif defined(_WIN32)
+#include <Winsock2.h>
+#pragma comment(lib, "Ws2_32.lib")
+#define OSSwapBigToHostInt16 ntohs
+#define OSSwapBigToHostInt32 ntohl
+#define isnan(x) ((x) != (x))
 #else
 #include <libkern/OSByteOrder.h>
 #endif
@@ -1551,6 +1564,8 @@ static void ticks_command(int cmd)
 			/* each tick takes 195 nsec, and there are 8 overhead ticks,
 			 *   so our srate is 1000000000 / ((highest_tick + 8) * 195) 
 			 */
+			int len;
+			char *dot;
 			int header_info[24] = {1179011410, 88, 1163280727, 1263424842,
 				28, 0, 0, 0,
 				0, 0, 0, 0,
@@ -1559,10 +1574,10 @@ static void ticks_command(int cmd)
 			0, 0, 0, 0};
 			header_info[15] = srate;
 			// mmm - generate output filename based on input filename
-			int len = strlen(filename);
+			len = strlen(filename);
 			output_filename = malloc(len+1);
 			strcpy(output_filename, filename);
-			char *dot = strchr(output_filename, '.');
+			dot = strchr(output_filename, '.');
 			strcpy(dot+1, "wav");
 			snd_file = fopen(output_filename, "w");
 			if (!snd_file)
@@ -2827,7 +2842,7 @@ int main(int argc, char **argv)
 							sscanf(argv[4], "%d", &format);
 						}
 					}
-					int i = 0;
+					i = 0;
 					if (read_data_file != NULL) {
 						fread(&i, 4, 1, read_data_file);
 						if (i == SND_MAGIC) {
